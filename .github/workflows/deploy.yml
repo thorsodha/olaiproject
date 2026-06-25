@@ -7,10 +7,10 @@ on:
 
 env:
   PROJECT_ID: 'gen-lang-client-0308183579'
-  REGION: 'europe-west1'            # Change this if your Cloud Run service is in a different region (e.g., us-central1)
-  SERVICE_NAME: 'olaiproject-app'   # Put your actual Cloud Run service name here
-  GAR_LOCATION: 'europe-west1'      # Match this with your Artifact Registry region
-  REPOSITORY: 'olaiproject-repo'     # Put your actual Artifact Registry repository name here
+  REGION: 'europe-north1'           
+  SERVICE_NAME: 'olaiprojectv4'      
+  GAR_LOCATION: 'europe-north1'      
+  REPOSITORY: 'olaiproject-repo'     
   WORKLOAD_IDENTITY_PROVIDER: 'projects/90985564727/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
   SERVICE_ACCOUNT: 'github-actions-sa@gen-lang-client-0308183579.iam.gserviceaccount.com'
 
