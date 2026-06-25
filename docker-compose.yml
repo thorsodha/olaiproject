@@ -1,0 +1,27 @@
+services:
+  gcs-emulator:
+    image: fsouza/fake-gcs-server
+    ports:
+      - "4443:4443"
+    command: -scheme http
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - STORAGE_EMULATOR_HOST=http://gcs-emulator:4443
+    volumes:
+      # Mount the specific subfolders from your desktop directly into the container workspace
+      - E:\OneDrive\Desktop\OlaiProject\PriceData:/app/PriceData
+      - E:\OneDrive\Desktop\OlaiProject\NewsBank:/app/NewsBank
+      - E:\OneDrive\Desktop\OlaiProject\visuals:/app/visuals
+
+      # Mount the individual root spreadsheets directly
+      - E:\OneDrive\Desktop\OlaiProject\WATCHLIST.xlsx:/app/WATCHLIST.xlsx
+      - E:\OneDrive\Desktop\OlaiProject\TECHNICAL.xlsx:/app/TECHNICAL.xlsx
+      - E:\OneDrive\Desktop\OlaiProject\matrix_dashboard.html:/app/matrix_dashboard.html
+
+    depends_on:
+      - gcs-emulator
+
