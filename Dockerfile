@@ -24,16 +24,19 @@ COPY main.py .
 COPY ta_analyzer.py .
 COPY dashboard_generator.py .
 COPY config.py .
-COPY price_fetcher.py .
 COPY sparkline_generator.py .
 COPY htmlgraph_generator.py .
+COPY price_fetcherv2.py .
+COPY watchlist.xlsx .
 
+# --- FIX: Create the required production directories ---
+RUN mkdir -p /app/oslobors
 
 # Expose the default Cloud Run port
 EXPOSE 8080
 
 # --- UPDATED STARTUP COMMAND FOR PRODUCTION ---
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "8", "--timeout", "0", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "8", "--timeout", "30", "main:app"]
 
 
 

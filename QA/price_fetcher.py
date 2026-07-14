@@ -7,10 +7,6 @@ import config
 
 START_CUTOFF = datetime(2024, 1, 1).date()
 
-def get_ticker_paths(ticker):
-    """Returns the path to save the file directly in the active storage volume."""
-    return os.path.join(config.OSLOBORS_DIR, f"{ticker}.xlsx")
-
 
 def check_file_integrity(file_path, ticker):
     """Checks if file exists and has the correct ticker in the header."""
@@ -31,48 +27,56 @@ def check_file_integrity(file_path, ticker):
 
 
 def update_ticker_data(ticker):
-    file_path = get_ticker_paths(ticker)
+    # Get ticket
+    file_path = os.path.join(config.OSLOBORS_DIR, f"{ticker}.xlsx")
 
-    # 1. Integrity Check
+    # check if file exists
     is_valid, message = check_file_integrity(file_path, ticker)
     yield f"[{ticker}] {message}<br>"
     if not is_valid:
         return
 
-    # 2. Determine Start Date & Existing Date Set
+    # Find Start Date & Existing Date Set
     existing_dates = set()
     df_existing = None
+    #TODO avoid hard coding here
     sheet_name_to_use = "Sheet1"
 
     if os.path.exists(file_path):
         try:
-            xls = pd.ExcelFile(file_path, engine='openpyxl')
-            sheet_name_to_use = xls.sheet_names[0]
-            df_existing = xls.parse(sheet_name_to_use, header=None)
+            excellink = pd.ExcelFile(file_path, engine='openpyxl')
+            #TODO avoid hard coding
+            sheet_name_to_use = excellink.sheet_names[0]
+            df_existing = excellink.parse(sheet_name_to_use, header=None)
 
+            #TODO fix hardcoding
             if len(df_existing) >= 3:
+
                 existing_dates = set(pd.to_datetime(df_existing.iloc[3:, 0], errors='coerce').dt.date)
                 last_date_val = df_existing.iloc[-1, 0]
                 last_date_dt = pd.to_datetime(last_date_val).date()
                 fetch_start = max(last_date_dt, START_CUTOFF)
             else:
                 fetch_start = START_CUTOFF
+
         except Exception as e:
             yield f"[{ticker}] Error reading existing file: {e}<br>"
             fetch_start = START_CUTOFF
     else:
         fetch_start = START_CUTOFF
 
-    # 3. Fetch Data (with Crash Protection and Logging)
+    # Gather up the existing data
     start_str = fetch_start.strftime('%Y-%m-%d')
     end_str = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-    yield f"[{ticker}] Fetching from {start_str}...<br>"
+    yield f"[{ticker}] Fetching from Yahoo Finance {start_str}...<br>"
     ticker_obj = yf.Ticker(ticker)
 
     try:
         new_data = ticker_obj.history(start=start_str, end=end_str)
+
     except Exception as e:
+
         yield f"[{ticker}] <span style='color:#ef4444;'>yfinance crashed! Skipping and logging error...</span><br>"
         log_path = os.path.join(config.OSLOBORS_DIR, "error_log.txt")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -82,6 +86,14 @@ def update_ticker_data(ticker):
 
     if new_data is None or new_data.empty:
         yield f"[{ticker}] <span style='color:#f59e0b; font-weight:bold;'>No new data found. Skipping safely.</span><br>"
+        return
+
+    if len(new_data) < 1:
+        yield f"[{ticker}] Zero rows returned. Skipping.<br>"
+        return
+
+    if 'Volume' in new_data.columns and new_data['Volume'].sum() == 0:
+        yield f"[{ticker}] Warning: Volume is 0. Skipping to avoid bad entry.<br>"
         return
 
     # 4. Process and Filter Data

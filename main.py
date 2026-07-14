@@ -35,11 +35,11 @@ def run_pipeline_logic(log_func):
     """Encapsulated core pipeline execution logic so both the
     live UI stream and the background worker can utilize it."""
     try:
-        import price_fetcher
         import ta_analyzer
         import dashboard_generator
         import sparkline_generator
         import htmlgraph_generator
+        import price_fetcherv2 as price_fetcher
     except Exception as import_err:
         log_func(f"Module Import Error: {str(import_err)}")
         return False
@@ -69,7 +69,7 @@ def run_pipeline_logic(log_func):
     for t in tickers:
         for line in price_fetcher.update_ticker_data(t):
             log_func(line)
-        time.sleep(random.uniform(5.0, 10))
+        time.sleep(random.uniform(30, 60))
 
     # STAGE 2: Quantitative Technical Screener
     log_func("Stage 2: Quantitative Technical Screener")
@@ -210,5 +210,6 @@ def serve_trend_graphs(filename):
 
 
 if __name__ == "__main__":
+    
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)

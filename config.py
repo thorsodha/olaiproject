@@ -9,8 +9,8 @@ import os
 IS_CLOUD = "K_SERVICE" in os.environ
 
 BASE_STORAGE = "/mnt/storage" if IS_CLOUD else "/app"
-WATCHLIST_PATH = os.path.join(BASE_STORAGE, "WATCHLIST.xlsx")
-TECHNICAL_FILE = os.path.join(BASE_STORAGE, "TECHNICAL.xlsx")
+WATCHLIST_PATH = os.path.join(BASE_STORAGE, "watchlist.xlsx")
+TECHNICAL_FILE = os.path.join(BASE_STORAGE, "technical.xlsx")
 DASHBOARD_FILE = os.path.join(BASE_STORAGE, "matrix_dashboard.html")
 NEWSWEB_DIR = os.path.join(BASE_STORAGE, "newsweb")
 OSLOBORS_DIR = os.path.join(BASE_STORAGE, "oslobors")
