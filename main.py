@@ -69,7 +69,7 @@ def run_pipeline_logic(log_func):
     for t in tickers:
         for line in price_fetcher.update_ticker_data(t):
             log_func(line)
-        time.sleep(random.uniform(30, 60))
+        time.sleep(random.uniform(2, 5))
 
     # STAGE 2: Quantitative Technical Screener
     log_func("Stage 2: Quantitative Technical Screener")
