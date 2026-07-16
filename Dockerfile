@@ -26,8 +26,7 @@ COPY dashboard_generator.py .
 COPY config.py .
 COPY sparkline_generator.py .
 COPY htmlgraph_generator.py .
-COPY price_fetcherv2.py .
-COPY watchlist.xlsx .
+COPY price_fetcherv3.py .
 
 # --- FIX: Create the required production directories ---
 RUN mkdir -p /app/oslobors
