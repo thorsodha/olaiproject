@@ -2,13 +2,19 @@ import os
 import sys
 import time
 import random
+import threading  # Added for local asynchronous execution
+
+import sys
+
+from config import IS_CLOUD
+
+print("CURRENT PYTHON PATH:", sys.executable)
 
 # --- CONFIGURATION IMPORT & INITIALIZATION ---
 try:
     import config
     import pandas as pd
     from flask import Flask, Response, request, jsonify
-    from google.cloud import tasks_v2  # Handled automatically via requirements.txt
 
     app = Flask(__name__)
 
@@ -39,14 +45,16 @@ def run_pipeline_logic(log_func):
         import dashboard_generator
         import sparkline_generator
         import htmlgraph_generator
-        import price_fetcherv2 as price_fetcher
+        import price_fetcherv3 as price_fetcher
     except Exception as import_err:
         log_func(f"Module Import Error: {str(import_err)}")
         return False
 
     log_func("System Health Check: Verifying Storage Mount Permissions...")
+    log_func("ISCLOUD = ", IS_CLOUD)
 
-    if config.IS_CLOUD:
+    # Safely check if IS_CLOUD attribute exists and is True
+    if getattr(config, 'IS_CLOUD', False):
         mount_ready = False
         for attempt in range(1, 6):
             try:
@@ -113,7 +121,7 @@ def load_saved_dashboard():
     if not os.path.exists(config.DASHBOARD_FILE):
         return f"""<body style="background:#0b0c10;color:#f44336;font-family:sans-serif;padding:40px;">
                    <h2>Dashboard Matrix File Offline</h2>
-                   <p>The file <code>matrix_dashboard.html</code> has not been generated in cloud storage yet.</p>
+                   <p>The file <code>matrix_dashboard.html</code> has not been generated yet.</p>
                    <p>Run the <a href="/update-prices" style="color:#66fcf1;">Pipeline Sync</a> to generate it now.</p>
                    </body>"""
     with open(config.DASHBOARD_FILE, "r", encoding="utf-8") as f:
@@ -122,29 +130,37 @@ def load_saved_dashboard():
 
 @app.route('/update-prices', methods=['GET', 'POST'])
 def update_prices_route():
-    # POST requests come from Cloud Scheduler
     if request.method == 'POST':
-        try:
-            # Force the clear, secure production URL explicitly to bypass internal http proxy redirects
-            production_worker_url = "https://olaiprojectv4-90985564727.europe-north1.run.app/execute-worker"
+        # Check environment context
+        if getattr(config, 'IS_CLOUD', False):
+            try:
+                from google.cloud import tasks_v2
+                production_worker_url = "https://olaiprojectv4-90985564727.europe-north1.run.app/execute-worker"
 
-            client = tasks_v2.CloudTasksClient()
-            parent = client.queue_path(PROJECT_ID, REGION, QUEUE_ID)
+                client = tasks_v2.CloudTasksClient()
+                parent = client.queue_path(PROJECT_ID, REGION, QUEUE_ID)
 
-            task = {
-                'http_request': {
-                    'http_method': tasks_v2.HttpMethod.POST,
-                    'url': production_worker_url,
+                task = {
+                    'http_request': {
+                        'http_method': tasks_v2.HttpMethod.POST,
+                        'url': production_worker_url,
+                    }
                 }
-            }
 
-            client.create_task(request={"parent": parent, "task": task})
-            return jsonify(
-                {"status": "Success", "message": f"Task successfully queued for {production_worker_url}"}), 202
+                client.create_task(request={"parent": parent, "task": task})
+                return jsonify({"status": "Success", "message": f"Task successfully queued for {production_worker_url}"}), 202
 
-        except Exception as e:
-            print(f"Failed to enqueue task: {str(e)}", file=sys.stderr)
-            return jsonify({"status": "Error", "message": str(e)}), 500
+            except Exception as e:
+                print(f"Failed to enqueue Cloud Task: {str(e)}", file=sys.stderr)
+                return jsonify({"status": "Error", "message": str(e)}), 500
+        else:
+            # Local Mode execution: Run in background thread to mimic async queue behavior
+            def local_worker():
+                print("[Local Worker] Starting background pipeline task...")
+                run_pipeline_logic(lambda text: print(f"[Local Worker Log] {text}"))
+
+            threading.Thread(target=local_worker, daemon=True).start()
+            return jsonify({"status": "Success", "message": "Local background task started successfully."}), 202
 
     # GET requests come from manual browser visits
     return """
@@ -178,7 +194,6 @@ def stream_log():
         yield "data: <h3>System Health Check: Verifying Storage Mount Permissions...</h3>\n\n"
         yield "data: CLEAR_DEFAULT\n\n"
 
-        # Diverts runtime logs directly out via the server-sent events socket
         run_pipeline_logic(lambda text: print(f"data: {text}\n\n"))
 
         yield "data: PIPELINE_COMPLETE\n\n"
@@ -188,10 +203,7 @@ def stream_log():
 
 @app.route('/execute-worker', methods=['POST'])
 def execute_worker():
-    """Target endpoint invoked cleanly by Cloud Tasks via secure HTTPS POST.
-    Flushes straight to container stdout for native Cloud Run log capture."""
     print("Cloud Task worker picked up execution. Starting pipeline...", flush=True)
-
     success = run_pipeline_logic(lambda text: print(f"[Worker Log] {text}", flush=True))
 
     if success:
@@ -208,8 +220,7 @@ def serve_trend_graphs(filename):
     with open(target_graph_path, "r", encoding="utf-8") as f:
         return f.read()
 
-
 if __name__ == "__main__":
-    
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # Setting use_reloader to False stops Flask from tracking internal library changes
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
