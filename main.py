@@ -51,7 +51,7 @@ def run_pipeline_logic(log_func):
         return False
 
     log_func("System Health Check: Verifying Storage Mount Permissions...")
-    log_func("ISCLOUD = ", IS_CLOUD)
+    log_func(f"ISCLOUD = {IS_CLOUD}")
 
     # Safely check if IS_CLOUD attribute exists and is True
     if getattr(config, 'IS_CLOUD', False):
