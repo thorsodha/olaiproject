@@ -48,5 +48,5 @@ jobs:
         flags: >-
           --allow-unauthenticated
           --execution-environment=gen2
-          --add-volume=name=storage-vol,type=cloud-storage,bucket=olaiproject_price_data
-          --add-volume-mount=volume=storage-vol,mount-path=/mnt/storage,readonly=false
+          --add-volume=name=storage-vol,type=cloud-storage,bucket=olaiproject_price_data,readonly=false
+          --add-volume-mount=volume=storage-vol,mount-path=/mnt/storage
